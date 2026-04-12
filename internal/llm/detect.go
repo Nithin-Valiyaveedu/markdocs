@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/nithinworks/markdocs/internal/config"
+	"github.com/Nithin-Valiyaveedu/markdocs/internal/config"
 )
 
 // AutoDetect returns the first available LLMProvider detected from the

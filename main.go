@@ -1,6 +1,6 @@
 package main
 
-import "github.com/nithinworks/markdocs/cmd"
+import "github.com/Nithin-Valiyaveedu/markdocs/cmd"
 
 func main() {
 	cmd.Execute()

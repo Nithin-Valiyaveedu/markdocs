@@ -6,7 +6,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/fatih/color"
-	"github.com/nithinworks/markdocs/internal/skill"
+	"github.com/Nithin-Valiyaveedu/markdocs/internal/skill"
 	"github.com/spf13/cobra"
 )
 

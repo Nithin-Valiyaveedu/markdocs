@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/nithinworks/markdocs/internal/config"
+	"github.com/Nithin-Valiyaveedu/markdocs/internal/config"
 )
 
 // LLMProvider is the interface all LLM backends must implement.

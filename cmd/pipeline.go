@@ -8,9 +8,9 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
-	"github.com/nithinworks/markdocs/internal/llm"
-	"github.com/nithinworks/markdocs/internal/scraper"
-	"github.com/nithinworks/markdocs/internal/skill"
+	"github.com/Nithin-Valiyaveedu/markdocs/internal/llm"
+	"github.com/Nithin-Valiyaveedu/markdocs/internal/scraper"
+	"github.com/Nithin-Valiyaveedu/markdocs/internal/skill"
 )
 
 // providerFromConfig constructs the LLM provider from the loaded appConfig.

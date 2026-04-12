@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/nithinworks/markdocs/internal/config"
+	"github.com/Nithin-Valiyaveedu/markdocs/internal/config"
 	"github.com/spf13/cobra"
 )
 

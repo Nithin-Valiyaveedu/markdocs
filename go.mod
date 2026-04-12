@@ -1,4 +1,4 @@
-module github.com/nithinworks/markdocs
+module github.com/Nithin-Valiyaveedu/markdocs
 
 go 1.25.0
 

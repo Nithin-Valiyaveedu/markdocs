@@ -8,8 +8,8 @@ import (
 	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
 	"github.com/manifoldco/promptui"
-	"github.com/nithinworks/markdocs/internal/llm"
-	"github.com/nithinworks/markdocs/internal/skill"
+	"github.com/Nithin-Valiyaveedu/markdocs/internal/llm"
+	"github.com/Nithin-Valiyaveedu/markdocs/internal/skill"
 	"github.com/spf13/cobra"
 )
 

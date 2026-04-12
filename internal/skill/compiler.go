@@ -8,7 +8,7 @@ import (
 	"text/template"
 	"bytes"
 
-	"github.com/nithinworks/markdocs/internal/llm"
+	"github.com/Nithin-Valiyaveedu/markdocs/internal/llm"
 )
 
 const urlDiscoveryPrompt = `What are the official documentation URLs for "{{.Library}}"?

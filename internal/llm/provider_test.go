@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/nithinworks/markdocs/internal/config"
+	"github.com/Nithin-Valiyaveedu/markdocs/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
