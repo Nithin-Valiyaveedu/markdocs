@@ -4,8 +4,12 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/nithinworks/markdocs/internal/config"
 	"github.com/spf13/cobra"
 )
+
+// appConfig holds the loaded configuration, available to all subcommands.
+var appConfig *config.Config
 
 var rootCmd = &cobra.Command{
 	Use:   "markdocs",
@@ -16,6 +20,18 @@ Claude Code skill files (.claude/skills/<category>/<library>.md).
 Configure a provider with 'markdocs init', then add skills with 'markdocs add <library>'.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		_ = cmd.Help()
+	},
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// init command creates the config, so skip loading it
+		if cmd.Name() == "init" {
+			return nil
+		}
+		cfg, err := config.Load()
+		if err != nil {
+			return fmt.Errorf("run 'markdocs init' first to configure a provider: %w", err)
+		}
+		appConfig = cfg
+		return nil
 	},
 }
 
