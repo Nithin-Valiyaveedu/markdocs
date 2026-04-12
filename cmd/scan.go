@@ -3,10 +3,9 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"text/tabwriter"
 
-	"github.com/fatih/color"
 	"github.com/Nithin-Valiyaveedu/markdocs/internal/skill"
+	"github.com/Nithin-Valiyaveedu/markdocs/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -31,10 +30,6 @@ func runScan(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
 
-	green := color.New(color.FgGreen).SprintFunc()
-	red := color.New(color.FgRed).SprintFunc()
-	yellow := color.New(color.FgYellow).SprintFunc()
-
 	// Scan project dependencies
 	depSets, err := skill.ScanProject(cwd)
 	if err != nil {
@@ -42,7 +37,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(depSets) == 0 {
-		fmt.Println("No dependency files found (package.json, go.mod, requirements.txt).")
+		ui.Info("No dependency files found (package.json, go.mod, requirements.txt).")
 		return nil
 	}
 
@@ -63,23 +58,21 @@ func runScan(cmd *cobra.Command, args []string) error {
 	}
 
 	// Print table
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "LIBRARY\tSOURCE\tSTATUS")
-	fmt.Fprintln(w, "-------\t------\t------")
-
+	tbl := ui.NewTable("LIBRARY", "SOURCE", "STATUS")
 	var missing []libEntry
 	for _, lib := range allLibs {
 		if skill.SkillExists(cwd, lib.name) {
-			fmt.Fprintf(w, "%s\t%s\t%s\n", lib.name, lib.source, green("✓ compiled"))
+			tbl.Row(lib.name, lib.source, ui.StyleSuccess.Render("✓ compiled"))
 		} else {
-			fmt.Fprintf(w, "%s\t%s\t%s\n", lib.name, lib.source, yellow("○ missing"))
+			tbl.Row(lib.name, lib.source, ui.StyleWarning.Render("○ missing"))
 			missing = append(missing, lib)
 		}
 	}
-	w.Flush()
+	tbl.Print()
 
-	fmt.Printf("\n%d libraries found, %d compiled, %d missing\n",
-		len(allLibs), len(allLibs)-len(missing), len(missing))
+	ui.Blank()
+	ui.Info(fmt.Sprintf("%d libraries found, %d compiled, %d missing",
+		len(allLibs), len(allLibs)-len(missing), len(missing)))
 
 	if len(missing) == 0 || !scanAddAll {
 		return nil
@@ -94,31 +87,35 @@ func runScan(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("\nAdding %d missing skills...\n", len(missing))
+	ui.Blank()
+	ui.Section(fmt.Sprintf("Adding %d missing skills", len(missing)))
+
 	added := 0
 	for _, lib := range missing {
-		fmt.Printf("\n[%s]\n", lib.name)
+		ui.Blank()
+		ui.Section(lib.name)
 
 		// Use LLM to discover URL, pick first one automatically
 		compiler := skill.NewLLMCompiler(provider)
 		urls, err := compiler.SuggestURLs(ctx, lib.name)
 		if err != nil {
-			fmt.Printf("  %s skipping %s: %s\n", red("✗"), lib.name, err)
+			ui.Error(fmt.Sprintf("skipping %s: %s", lib.name, err))
 			continue
 		}
 		if len(urls) == 0 {
-			fmt.Printf("  %s no URLs found for %s\n", red("✗"), lib.name)
+			ui.Error(fmt.Sprintf("no URLs found for %s", lib.name))
 			continue
 		}
 
 		_, err = runAddPipeline(ctx, lib.name, urls[0], provider, cwd)
 		if err != nil {
-			fmt.Printf("  %s failed: %s\n", red("✗"), err)
+			ui.Error(fmt.Sprintf("failed: %s", err))
 			continue
 		}
 		added++
 	}
 
-	fmt.Printf("\n%s Added %d skill(s).\n", green("✓"), added)
+	ui.Blank()
+	ui.Success(fmt.Sprintf("Added %d skill(s).", added))
 	return nil
 }

@@ -5,12 +5,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/briandowns/spinner"
-	"github.com/fatih/color"
 	"github.com/Nithin-Valiyaveedu/markdocs/internal/scraper"
 	"github.com/Nithin-Valiyaveedu/markdocs/internal/skill"
+	"github.com/Nithin-Valiyaveedu/markdocs/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -35,10 +33,6 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
-
-	green := color.New(color.FgGreen).SprintFunc()
-	yellow := color.New(color.FgYellow).SprintFunc()
-	red := color.New(color.FgRed).SprintFunc()
 
 	if len(args) == 0 && !updateAll {
 		return fmt.Errorf("specify a skill name or use --all")
@@ -85,45 +79,46 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 			name = strings.TrimSuffix(filepath.Base(f.Path), ".md")
 		}
 
-		fmt.Printf("Checking %s...\n", name)
+		ui.Section(name)
 
 		if len(f.Meta.Sources) == 0 {
-			fmt.Printf("  %s no sources recorded — skipping\n", yellow("○"))
+			ui.Warning("no sources recorded — skipping")
 			skipped++
 			continue
 		}
 
 		// Re-scrape the primary source URL
 		primaryURL := f.Meta.Sources[0]
-		s := spinner.New(spinner.CharSets[14], 80*time.Millisecond)
-		s.Suffix = fmt.Sprintf(" Fetching %s...", primaryURL)
-		s.Start()
-
-		newContent, err := sc.Scrape(primaryURL)
-		s.Stop()
+		var newContent string
+		err := ui.Spin(fmt.Sprintf("Fetching %s...", primaryURL), func() error {
+			var err error
+			newContent, err = sc.Scrape(primaryURL)
+			return err
+		})
 		if err != nil {
-			fmt.Printf("  %s fetch failed: %s — skipping\n", red("✗"), err)
+			ui.Error(fmt.Sprintf("fetch failed: %s — skipping", err))
 			skipped++
 			continue
 		}
 
 		newChecksum := skill.ContentChecksum(newContent)
 		if newChecksum == f.Meta.Checksum {
-			fmt.Printf("  %s up to date\n", green("✓"))
+			ui.Success("up to date")
 			skipped++
 			continue
 		}
 
-		fmt.Printf("  %s content changed — recompiling...\n", yellow("↻"))
+		ui.Recompiling("content changed — recompiling...")
 		_, err = runAddPipeline(ctx, name, primaryURL, provider, cwd)
 		if err != nil {
-			fmt.Printf("  %s recompile failed: %s\n", red("✗"), err)
+			ui.Error(fmt.Sprintf("recompile failed: %s", err))
 			skipped++
 			continue
 		}
 		updated++
 	}
 
-	fmt.Printf("\n%s Updated %d, skipped %d skill(s).\n", green("✓"), updated, skipped)
+	ui.Blank()
+	ui.Success(fmt.Sprintf("Updated %d, skipped %d skill(s).", updated, skipped))
 	return nil
 }

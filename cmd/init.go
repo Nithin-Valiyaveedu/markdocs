@@ -4,13 +4,10 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"time"
 
-	"github.com/briandowns/spinner"
-	"github.com/fatih/color"
-	"github.com/manifoldco/promptui"
 	"github.com/Nithin-Valiyaveedu/markdocs/internal/config"
 	"github.com/Nithin-Valiyaveedu/markdocs/internal/llm"
+	"github.com/Nithin-Valiyaveedu/markdocs/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -29,18 +26,15 @@ func init() {
 
 func runInit(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
-	green := color.New(color.FgGreen).SprintFunc()
 
 	// Try auto-detection first unless skipped
 	if !initSkipDetect {
 		if detected, ok := config.DetectProvider(); ok {
-			prompt := promptui.Prompt{
-				Label:     fmt.Sprintf("Detected %s from environment. Use it?", string(detected)),
-				IsConfirm: true,
+			use, err := ui.UseDetected(string(detected))
+			if err != nil {
+				return fmt.Errorf("prompt: %w", err)
 			}
-			_, err := prompt.Run()
-			if err == nil {
-				// User confirmed — build config from detected provider
+			if use {
 				cfg, err := buildDetectedConfig(detected)
 				if err != nil {
 					return err
@@ -48,7 +42,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 				if err := validateAndSave(ctx, cfg); err != nil {
 					return err
 				}
-				fmt.Println(green("✓ Configuration saved."))
+				ui.Success("Configuration saved.")
 				return nil
 			}
 			// User declined — fall through to manual setup
@@ -56,11 +50,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	// Manual provider selection
-	providerSelect := promptui.Select{
-		Label: "Select LLM provider",
-		Items: []string{"Anthropic", "OpenAI", "OpenAI-compatible (Groq, Together, etc.)", "Ollama (local)"},
-	}
-	idx, _, err := providerSelect.Run()
+	idx, err := ui.SelectProvider("")
 	if err != nil {
 		return fmt.Errorf("provider selection: %w", err)
 	}
@@ -83,23 +73,23 @@ func runInit(cmd *cobra.Command, args []string) error {
 	if err := validateAndSave(ctx, cfg); err != nil {
 		return err
 	}
-	fmt.Println(green("✓ Configuration saved to ~/.markdocs/config.json"))
+	ui.Success("Configuration saved to ~/.markdocs/config.json")
 	return nil
 }
 
 func validateAndSave(ctx context.Context, cfg *config.Config) error {
-	s := spinner.New(spinner.CharSets[14], 80*time.Millisecond)
-	s.Suffix = " Validating credentials..."
-	s.Start()
-
-	provider, err := llm.NewProvider(cfg)
 	var validationErr error
-	if err == nil {
-		_, validationErr = provider.Complete(ctx, "Reply with the single word: ok")
-	} else {
+	err := ui.Spin("Validating credentials...", func() error {
+		provider, err := llm.NewProvider(cfg)
+		if err != nil {
+			return err
+		}
+		_, err = provider.Complete(ctx, "Reply with the single word: ok")
+		return err
+	})
+	if err != nil {
 		validationErr = err
 	}
-	s.Stop()
 
 	if validationErr != nil {
 		fmt.Fprintf(os.Stderr, "✗ Validation failed: %s\n", validationErr)
@@ -122,11 +112,11 @@ func buildDetectedConfig(provider config.ProviderName) (*config.Config, error) {
 }
 
 func promptAnthropicConfig() (*config.Config, error) {
-	apiKey, err := promptSecret("Anthropic API key")
+	apiKey, err := ui.Secret("Anthropic API key")
 	if err != nil {
 		return nil, err
 	}
-	model, err := promptWithDefault("Model", "claude-haiku-4-5-20251001")
+	model, err := ui.InputWithDefault("Model", "claude-haiku-4-5-20251001")
 	if err != nil {
 		return nil, err
 	}
@@ -137,11 +127,11 @@ func promptOpenAIConfig(defaultModel, baseURL string) (*config.Config, error) {
 	if defaultModel == "" {
 		defaultModel = "gpt-4o-mini"
 	}
-	apiKey, err := promptSecret("OpenAI API key")
+	apiKey, err := ui.Secret("OpenAI API key")
 	if err != nil {
 		return nil, err
 	}
-	model, err := promptWithDefault("Model", defaultModel)
+	model, err := ui.InputWithDefault("Model", defaultModel)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +139,7 @@ func promptOpenAIConfig(defaultModel, baseURL string) (*config.Config, error) {
 }
 
 func promptOpenAICompatibleConfig() (*config.Config, error) {
-	baseURL, err := promptWithDefault("Base URL", "https://api.groq.com/openai/v1")
+	baseURL, err := ui.InputWithDefault("Base URL", "https://api.groq.com/openai/v1")
 	if err != nil {
 		return nil, err
 	}
@@ -157,23 +147,13 @@ func promptOpenAICompatibleConfig() (*config.Config, error) {
 }
 
 func promptOllamaConfig() (*config.Config, error) {
-	host, err := promptWithDefault("Ollama host", "http://localhost:11434")
+	host, err := ui.InputWithDefault("Ollama host", "http://localhost:11434")
 	if err != nil {
 		return nil, err
 	}
-	model, err := promptWithDefault("Model", "llama3.2")
+	model, err := ui.InputWithDefault("Model", "llama3.2")
 	if err != nil {
 		return nil, err
 	}
 	return &config.Config{Provider: config.ProviderOllama, OllamaHost: host, Model: model}, nil
-}
-
-func promptSecret(label string) (string, error) {
-	p := promptui.Prompt{Label: label, Mask: '*'}
-	return p.Run()
-}
-
-func promptWithDefault(label, defaultVal string) (string, error) {
-	p := promptui.Prompt{Label: label, Default: defaultVal}
-	return p.Run()
 }

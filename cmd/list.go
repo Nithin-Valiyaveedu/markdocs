@@ -5,11 +5,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"text/tabwriter"
 	"time"
 
-	"github.com/fatih/color"
 	"github.com/Nithin-Valiyaveedu/markdocs/internal/skill"
+	"github.com/Nithin-Valiyaveedu/markdocs/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -38,16 +37,11 @@ func runList(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(files) == 0 {
-		fmt.Println("No skills compiled yet. Run 'markdocs add <library>' to get started.")
+		ui.Info("No skills compiled yet. Run 'markdocs add <library>' to get started.")
 		return nil
 	}
 
-	green := color.New(color.FgGreen).SprintFunc()
-	yellow := color.New(color.FgYellow).SprintFunc()
-
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "NAME\tCATEGORY\tMODEL\tCOMPILED\tSOURCES")
-	fmt.Fprintln(w, "----\t--------\t-----\t--------\t-------")
+	tbl := ui.NewTable("NAME", "CATEGORY", "MODEL", "COMPILED", "SOURCES")
 
 	shown := 0
 	for _, f := range files {
@@ -57,11 +51,11 @@ func runList(cmd *cobra.Command, args []string) error {
 		}
 
 		age := skill.CompiledAge(f.Meta.Compiled)
-		ageStr := age
+		var ageStr string
 		if stale {
-			ageStr = yellow(age)
+			ageStr = ui.StyleWarning.Render(age)
 		} else {
-			ageStr = green(age)
+			ageStr = ui.StyleSuccess.Render(age)
 		}
 
 		name := f.Meta.Name
@@ -69,21 +63,23 @@ func runList(cmd *cobra.Command, args []string) error {
 			name = skillNameFromPath(f.Path)
 		}
 
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d URL(s)\n",
+		tbl.Row(
 			name,
 			f.Meta.Category,
 			f.Meta.Model,
 			ageStr,
-			len(f.Meta.Sources),
+			fmt.Sprintf("%d URL(s)", len(f.Meta.Sources)),
 		)
 		shown++
 	}
-	w.Flush()
+
+	tbl.Print()
 
 	if shown == 0 && listStale {
-		fmt.Println("All skills are up to date.")
+		ui.Info("All skills are up to date.")
 	} else {
-		fmt.Printf("\n%d skill(s) found.\n", shown)
+		ui.Blank()
+		ui.Info(fmt.Sprintf("%d skill(s) found.", shown))
 	}
 	return nil
 }

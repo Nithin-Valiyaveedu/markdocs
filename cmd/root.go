@@ -5,8 +5,13 @@ import (
 	"os"
 
 	"github.com/Nithin-Valiyaveedu/markdocs/internal/config"
+	"github.com/Nithin-Valiyaveedu/markdocs/internal/ui"
 	"github.com/spf13/cobra"
 )
+
+// Version is set at build time via -ldflags "-X 'github.com/Nithin-Valiyaveedu/markdocs/cmd.Version=v1.2.3'"
+// Falls back to "dev" for local builds.
+var Version = "dev"
 
 // appConfig holds the loaded configuration, available to all subcommands.
 var appConfig *config.Config
@@ -22,6 +27,8 @@ Configure a provider with 'markdocs init', then add skills with 'markdocs add <l
 		_ = cmd.Help()
 	},
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		ui.PrintBanner(Version)
+		ui.Blank()
 		// init command creates the config, so skip loading it
 		if cmd.Name() == "init" {
 			return nil
