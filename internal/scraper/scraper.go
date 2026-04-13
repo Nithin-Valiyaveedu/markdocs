@@ -1,6 +1,10 @@
 package scraper
 
-import "fmt"
+import (
+	"fmt"
+	"net/url"
+	"strings"
+)
 
 // MinContentLength is the minimum number of characters required for scraped
 // content to be considered successful. Below this threshold, the waterfall
@@ -35,8 +39,26 @@ func NewHTTPScraper() Scraper {
 	return newHTTPScraper()
 }
 
+// ValidateURL returns an error if rawURL is not a valid http/https URL.
+func ValidateURL(rawURL string) error {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid URL %q: %w", rawURL, err)
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return fmt.Errorf("invalid URL %q: must start with http:// or https://", rawURL)
+	}
+	if strings.TrimSpace(parsed.Host) == "" {
+		return fmt.Errorf("invalid URL %q: missing host", rawURL)
+	}
+	return nil
+}
+
 // Scrape attempts each layer in order and returns the first successful result.
 func (w *WaterfallScraper) Scrape(url string) (string, error) {
+	if err := ValidateURL(url); err != nil {
+		return "", err
+	}
 	var lastErr error
 	for _, layer := range w.layers {
 		content, err := layer.Scrape(url)

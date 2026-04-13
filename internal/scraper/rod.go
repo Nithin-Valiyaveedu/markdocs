@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
+	"github.com/go-rod/rod/lib/proto"
 )
 
 // RodScraper is Layer 2: uses a headless browser (go-rod) for JS-heavy sites.
@@ -25,19 +26,27 @@ func NewRodScraper(timeoutSeconds int) *RodScraper {
 func (r *RodScraper) Scrape(url string) (string, error) {
 	timeout := time.Duration(r.timeoutSeconds) * time.Second
 
-	// Try to find an installed browser; if not available, return a clear error
 	path, found := launcher.LookPath()
 	if !found {
 		return "", fmt.Errorf("rod scraper: no browser found — install Chromium or Chrome to scrape JS-heavy sites")
 	}
 
-	u := launcher.New().Bin(path).MustLaunch()
+	u, err := launcher.New().Bin(path).Launch()
+	if err != nil {
+		return "", fmt.Errorf("rod launching browser: %w", err)
+	}
 
-	browser := rod.New().ControlURL(u).MustConnect()
-	defer browser.MustClose()
+	browser := rod.New().ControlURL(u)
+	if err := browser.Connect(); err != nil {
+		return "", fmt.Errorf("rod connecting to browser: %w", err)
+	}
+	defer browser.Close()
 
-	page := browser.Timeout(timeout).MustPage(url)
-	defer page.MustClose()
+	page, err := browser.Timeout(timeout).Page(proto.TargetCreateTarget{URL: url})
+	if err != nil {
+		return "", fmt.Errorf("rod navigating to %s: %w", url, err)
+	}
+	defer page.Close()
 
 	if err := page.WaitLoad(); err != nil {
 		return "", fmt.Errorf("rod waiting for page load %s: %w", url, err)
