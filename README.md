@@ -1,6 +1,6 @@
 # markdocs
 
-<img src="assets/logo.png" alt="markdocs" width="420" />
+<img src="assets/markdocs-logo.png" alt="markdocs" width="420" />
 
 CLI to compile library documentation into Claude Code skill files
 
