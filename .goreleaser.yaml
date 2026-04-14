@@ -1,5 +1,9 @@
+version: 2
+
 builds:
   - binary: markdocs
+    ldflags:
+      - -X 'github.com/Nithin-Valiyaveedu/markdocs/cmd.Version=v{{ .Version }}'
     goos:
       - windows
       - darwin
@@ -15,18 +19,10 @@ archives:
       - goos: windows
         format: zip
 
-homebrew_casks:
-  - name: markdocs
-    repository:
-      owner: Nithin-Valiyaveedu
-      name: homebrew-markdocs
-      branch: main
-      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
-    binaries:
-      - markdocs
-    hooks:
-      post:
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/markdocs"]
-          end
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
