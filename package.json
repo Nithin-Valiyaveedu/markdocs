@@ -24,6 +24,10 @@
     "url": "https://github.com/Nithin-Valiyaveedu/markdocs/issues"
   },
   "homepage": "https://github.com/Nithin-Valiyaveedu/markdocs#readme",
+  "files": [
+    "README.md",
+    "assets/"
+  ],
   "dependencies": {
     "golang-npm": "^0.0.6"
   },
