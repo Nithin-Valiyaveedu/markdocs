@@ -1,6 +1,6 @@
 {
-  "name": "@Nithin-Valiyaveedu/markdocs",
-  "version": "0.1.0",
+  "name": "@val-nithin/markdocs",
+  "version": "0.1.2",
   "description": "CLI to compile library documentation into Claude Code skill files.",
   "main": "index.js",
   "scripts": {
@@ -11,13 +11,23 @@
     "type": "git",
     "url": "git+https://github.com/Nithin-Valiyaveedu/markdocs.git"
   },
-  "keywords": ["cli", "documentation", "claude", "ai", "llm"],
+  "keywords": [
+    "cli",
+    "documentation",
+    "claude",
+    "ai",
+    "llm"
+  ],
   "author": "Nithin-Valiyaveedu",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/Nithin-Valiyaveedu/markdocs/issues"
   },
   "homepage": "https://github.com/Nithin-Valiyaveedu/markdocs#readme",
+  "files": [
+    "README.md",
+    "assets/"
+  ],
   "dependencies": {
     "golang-npm": "^0.0.6"
   },

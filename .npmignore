@@ -1,0 +1,12 @@
+bin/
+internal/
+cmd/
+testdata/
+skills/
+.github/
+.goreleaser.yaml
+jakefile.toml
+go.mod
+go.sum
+main.go
+*.go
