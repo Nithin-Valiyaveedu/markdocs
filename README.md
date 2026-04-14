@@ -25,7 +25,7 @@ go install github.com/Nithin-Valiyaveedu/markdocs@latest
 2. Using `npm`:
 
 ```bash
-npm install -g @Nithin-Valiyaveedu/markdocs
+npm install -g @val-nithin/markdocs
 ```
 
 3. Using `brew` (Mac/Linux):
