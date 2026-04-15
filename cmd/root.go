@@ -3,15 +3,23 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"runtime/debug"
 
 	"github.com/Nithin-Valiyaveedu/markdocs/internal/config"
 	"github.com/Nithin-Valiyaveedu/markdocs/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-// Version is set at build time via -ldflags "-X 'github.com/Nithin-Valiyaveedu/markdocs/cmd.Version=v1.2.3'"
-// Falls back to "dev" for local builds.
-var Version = "0.2.1"
+var Version = resolveVersion()
+
+func resolveVersion() string {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		if v := info.Main.Version; v != "" && v != "(devel)" {
+			return v
+		}
+	}
+	return "dev"
+}
 
 // appConfig holds the loaded configuration, available to all subcommands.
 var appConfig *config.Config
