@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/Nithin-Valiyaveedu/markdocs/internal/llm"
 	"github.com/Nithin-Valiyaveedu/markdocs/internal/skill"
@@ -18,7 +19,7 @@ var addCmd = &cobra.Command{
 	Long: `Discovers documentation URLs for the given library using the configured LLM,
 presents them for interactive selection, scrapes the pages, compiles the content
 into a structured skill file, and writes it to .claude/skills/<category>/<library>.md.`,
-	Args: cobra.ExactArgs(1),
+	Args: cobra.MinimumNArgs(1),
 	RunE: runAdd,
 }
 
@@ -27,7 +28,7 @@ func init() {
 }
 
 func runAdd(cmd *cobra.Command, args []string) error {
-	library := args[0]
+	library := strings.Join(args, " ")
 	ctx := cmd.Context()
 
 	provider, err := llm.NewProvider(appConfig)

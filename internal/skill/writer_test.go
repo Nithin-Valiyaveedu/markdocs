@@ -50,7 +50,7 @@ func TestFSWriterFrontmatterParseable(t *testing.T) {
 		Model:            "llama3.2",
 		Provider:         "ollama",
 		ProjectFramework: "next.js",
-		MarkdocsVersion:  "0.1.0",
+		MarkdocsVersion:  "0.2.0",
 	}
 	path, err := w.Write("react", "frontend", "# React\n## What This Is\nContent.", meta)
 	require.NoError(t, err)

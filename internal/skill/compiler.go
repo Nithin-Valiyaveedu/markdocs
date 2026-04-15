@@ -1,14 +1,15 @@
 package skill
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
 	"text/template"
-	"bytes"
 
 	"github.com/Nithin-Valiyaveedu/markdocs/internal/llm"
+	"github.com/Nithin-Valiyaveedu/markdocs/internal/search"
 )
 
 const urlDiscoveryPrompt = `What are the official documentation URLs for "{{.Library}}"?
@@ -71,17 +72,36 @@ type Compiler interface {
 // LLMCompiler implements Compiler using an LLM provider.
 type LLMCompiler struct {
 	provider llm.LLMProvider
+	// searchFn is the web search backend. Defaults to search.DocURLs.
+	// Override in tests to avoid real network calls.
+	searchFn func(library string, max int) ([]string, error)
 }
 
 var _ Compiler = (*LLMCompiler)(nil)
 
 // NewLLMCompiler creates a new LLMCompiler using the given provider.
 func NewLLMCompiler(provider llm.LLMProvider) *LLMCompiler {
-	return &LLMCompiler{provider: provider}
+	return &LLMCompiler{provider: provider, searchFn: search.DocURLs}
 }
 
-// SuggestURLs asks the LLM to suggest documentation URLs for the given library.
+// SuggestURLs discovers documentation URLs for the given library.
+// It searches the web first (DuckDuckGo) and validates reachability, falling
+// back to asking the LLM if web search yields nothing usable.
 func (c *LLMCompiler) SuggestURLs(ctx context.Context, library string) ([]string, error) {
+	// Step 1: web search
+	webURLs, err := c.searchFn(library, 8)
+	if err == nil && len(webURLs) > 0 {
+		validated := search.ValidateURLs(webURLs)
+		if len(validated) > 0 {
+			// Return top 5 validated results
+			if len(validated) > 5 {
+				validated = validated[:5]
+			}
+			return validated, nil
+		}
+	}
+
+	// Step 2: fall back to LLM
 	prompt, err := renderTemplate(urlDiscoveryPrompt, map[string]string{"Library": library})
 	if err != nil {
 		return nil, fmt.Errorf("rendering url discovery prompt: %w", err)
@@ -98,6 +118,12 @@ func (c *LLMCompiler) SuggestURLs(ctx context.Context, library string) ([]string
 	}
 	if len(urls) == 0 {
 		return nil, fmt.Errorf("no URLs returned for library %q", library)
+	}
+
+	// Validate LLM-suggested URLs too
+	validated := search.ValidateURLs(urls)
+	if len(validated) > 0 {
+		return validated, nil
 	}
 	return urls, nil
 }

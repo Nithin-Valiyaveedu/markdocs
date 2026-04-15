@@ -93,7 +93,7 @@ func NewSkillMeta(library, provider, model, category, framework string, sources 
 		Model:            model,
 		Provider:         provider,
 		ProjectFramework: framework,
-		MarkdocsVersion:  "0.1.0",
+		MarkdocsVersion:  "0.2.0",
 	}
 }
 

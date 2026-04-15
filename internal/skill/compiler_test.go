@@ -24,12 +24,22 @@ func (m *mockProvider) Complete(ctx context.Context, prompt string) (string, err
 
 func (m *mockProvider) Model() string { return m.model }
 
+// noopSearch is a search function that always returns nothing, forcing the LLM fallback.
+func noopSearch(_ string, _ int) ([]string, error) { return nil, nil }
+
+// newTestCompiler returns an LLMCompiler with web search disabled.
+func newTestCompiler(provider *mockProvider) *LLMCompiler {
+	c := NewLLMCompiler(provider)
+	c.searchFn = noopSearch
+	return c
+}
+
 func TestSuggestURLsParsing(t *testing.T) {
 	provider := &mockProvider{
 		response: `["https://react.dev/learn", "https://react.dev/reference"]`,
 		model:    "test",
 	}
-	compiler := NewLLMCompiler(provider)
+	compiler := newTestCompiler(provider)
 	urls, err := compiler.SuggestURLs(context.Background(), "react")
 	require.NoError(t, err)
 	assert.Len(t, urls, 2)
@@ -41,7 +51,7 @@ func TestSuggestURLsWithCodeFence(t *testing.T) {
 		response: "```json\n[\"https://react.dev\"]\n```",
 		model:    "test",
 	}
-	compiler := NewLLMCompiler(provider)
+	compiler := newTestCompiler(provider)
 	urls, err := compiler.SuggestURLs(context.Background(), "react")
 	require.NoError(t, err)
 	assert.Len(t, urls, 1)
@@ -49,14 +59,14 @@ func TestSuggestURLsWithCodeFence(t *testing.T) {
 
 func TestSuggestURLsMalformed(t *testing.T) {
 	provider := &mockProvider{response: "Here are some links: react.dev", model: "test"}
-	compiler := NewLLMCompiler(provider)
+	compiler := newTestCompiler(provider)
 	_, err := compiler.SuggestURLs(context.Background(), "react")
 	assert.Error(t, err)
 }
 
 func TestSuggestURLsLLMError(t *testing.T) {
 	provider := &mockProvider{err: errors.New("timeout"), model: "test"}
-	compiler := NewLLMCompiler(provider)
+	compiler := newTestCompiler(provider)
 	_, err := compiler.SuggestURLs(context.Background(), "react")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "llm url discovery")
