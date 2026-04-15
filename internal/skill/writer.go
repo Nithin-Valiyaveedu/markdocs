@@ -12,9 +12,15 @@ import (
 )
 
 // SkillMeta holds the YAML frontmatter written to each skill file.
-// The filesystem is the database — all metadata lives here.
+// Claude Code fields (description, when_to_use, user-invocable) come first
+// so Claude Code reads them immediately. markdocs tracking fields follow.
 type SkillMeta struct {
-	Name             string   `yaml:"name"`
+	// Claude Code fields
+	Name          string `yaml:"name"`
+	Description   string `yaml:"description,omitempty"`
+	WhenToUse     string `yaml:"when_to_use,omitempty"`
+	UserInvocable bool   `yaml:"user-invocable"`
+	// markdocs tracking fields
 	Category         string   `yaml:"category"`
 	Sources          []string `yaml:"sources"`
 	Compiled         string   `yaml:"compiled"` // RFC3339
@@ -83,9 +89,12 @@ func ContentChecksum(content string) string {
 }
 
 // NewSkillMeta builds a SkillMeta from the given inputs.
-func NewSkillMeta(library, provider, model, category, framework string, sources []string, scrapedContent string) SkillMeta {
+func NewSkillMeta(library, provider, model, category, framework, description, whenToUse string, sources []string, scrapedContent string) SkillMeta {
 	return SkillMeta{
 		Name:             sanitizeName(library),
+		Description:      description,
+		WhenToUse:        whenToUse,
+		UserInvocable:    false,
 		Category:         category,
 		Sources:          sources,
 		Compiled:         time.Now().UTC().Format(time.RFC3339),
@@ -93,7 +102,7 @@ func NewSkillMeta(library, provider, model, category, framework string, sources 
 		Model:            model,
 		Provider:         provider,
 		ProjectFramework: framework,
-		MarkdocsVersion:  "0.2.0",
+		MarkdocsVersion:  "0.2.1",
 	}
 }
 

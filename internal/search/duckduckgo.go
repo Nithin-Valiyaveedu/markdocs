@@ -17,8 +17,8 @@ var searchClient = &http.Client{
 }
 
 // DocURLs searches DuckDuckGo for documentation URLs for the given library.
-// It returns up to maxResults candidate URLs filtered to likely doc sites.
-// Falls back gracefully — returns (nil, nil) if search yields nothing usable.
+// It returns the top maxResults results, preserving DDG's ranking order and
+// only stripping obvious noise (social media, video sites, etc.).
 func DocURLs(library string, maxResults int) ([]string, error) {
 	query := fmt.Sprintf("%s official documentation", library)
 	raw, err := ddgSearch(query)
@@ -26,29 +26,16 @@ func DocURLs(library string, maxResults int) ([]string, error) {
 		return nil, err
 	}
 
-	// Score and filter results
-	var urls []string
 	seen := make(map[string]bool)
+	var urls []string
 	for _, u := range raw {
-		if seen[u] {
+		if seen[u] || isBlocklisted(u) {
 			continue
 		}
 		seen[u] = true
-		if isLikelyDocURL(u) {
-			urls = append(urls, u)
-		}
+		urls = append(urls, u)
 		if len(urls) >= maxResults {
 			break
-		}
-	}
-
-	// If strict filtering left nothing, fall back to all results
-	if len(urls) == 0 {
-		for _, u := range raw {
-			if len(urls) >= maxResults {
-				break
-			}
-			urls = append(urls, u)
 		}
 	}
 
@@ -165,47 +152,21 @@ func unwrapDDGRedirect(href string) string {
 	return ""
 }
 
-// docHostPatterns are hostname substrings that strongly indicate a documentation site.
-var docHostPatterns = []string{
-	"docs.", "doc.", "developer.", "developers.", "dev.",
-	"api.", "reference.", "learn.", "guide.", "wiki.",
-	"readthedocs.", ".github.io", "pkg.go.dev",
-	"npmjs.com", "crates.io", "pypi.org",
-}
-
-// docPathPatterns are URL path substrings that indicate documentation.
-var docPathPatterns = []string{
-	"/docs", "/documentation", "/doc/", "/api/", "/reference/",
-	"/guide/", "/getting-started", "/tutorial", "/manual",
-}
-
-// blocklistHosts are hosts that are almost never the right documentation source.
+// blocklistHosts are hosts that are never useful documentation sources.
 var blocklistHosts = []string{
 	"youtube.com", "twitter.com", "x.com", "reddit.com",
 	"stackoverflow.com", "medium.com", "dev.to", "linkedin.com",
 	"facebook.com", "instagram.com", "amazon.com",
 }
 
-func isLikelyDocURL(rawURL string) bool {
+func isBlocklisted(rawURL string) bool {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
-		return false
+		return true
 	}
 	host := strings.ToLower(parsed.Host)
-	path := strings.ToLower(parsed.Path)
-
 	for _, blocked := range blocklistHosts {
 		if strings.Contains(host, blocked) {
-			return false
-		}
-	}
-	for _, pat := range docHostPatterns {
-		if strings.Contains(host, pat) {
-			return true
-		}
-	}
-	for _, pat := range docPathPatterns {
-		if strings.Contains(path, pat) {
 			return true
 		}
 	}

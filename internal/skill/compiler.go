@@ -39,14 +39,18 @@ Generate a skill file with EXACTLY these sections, in this order:
 ## Common Errors
 ## Version Notes
 
-Also determine the most appropriate category for this library from: frontend, backend, testing, infra, database, payments, auth, devtools. Reply with the content then a final line: CATEGORY: <category>
+After the content, output these metadata lines (do not include them in the markdown body):
+CATEGORY: <one of: frontend, backend, testing, infra, database, payments, auth, devtools>
+DESCRIPTION: <one sentence describing what this library does and when Claude should load this skill. Max 200 characters. Front-load the library name and key use case.>
+WHEN_TO_USE: <comma-separated trigger phrases or situations, e.g. "user mentions reactflow, building a node graph, flow diagram". Max 200 characters.>
 
 Rules:
 - Extract facts, not prose
 - Flag anything undocumented but real (hidden gotchas)
 - Note version-specific behaviour
 - Use the project's detected patterns and config
-- Keep it concise — this goes into an LLM context window`
+- Keep it concise — this goes into an LLM context window
+- Keep total content under 400 lines`
 
 // CompileInput holds the inputs needed to compile a skill file.
 type CompileInput struct {
@@ -59,8 +63,10 @@ type CompileInput struct {
 
 // CompileOutput holds the result of a skill compilation.
 type CompileOutput struct {
-	Markdown string
-	Category string
+	Markdown    string
+	Category    string
+	Description string
+	WhenToUse   string
 }
 
 // Compiler discovers doc URLs and compiles documentation into skill files.
@@ -143,30 +149,31 @@ func (c *LLMCompiler) Compile(ctx context.Context, input CompileInput) (*Compile
 	return parseCompileResponse(response), nil
 }
 
-// parseCompileResponse extracts the Markdown content and category from the LLM response.
+// parseCompileResponse extracts markdown content and metadata lines from the LLM response.
 func parseCompileResponse(response string) *CompileOutput {
-	const categoryPrefix = "CATEGORY:"
 	lines := strings.Split(response, "\n")
 
 	var contentLines []string
-	category := "general"
+	out := &CompileOutput{Category: "general"}
 
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, categoryPrefix) {
-			cat := strings.TrimSpace(strings.TrimPrefix(trimmed, categoryPrefix))
-			if cat != "" {
-				category = strings.ToLower(cat)
+		switch {
+		case strings.HasPrefix(trimmed, "CATEGORY:"):
+			if v := strings.TrimSpace(strings.TrimPrefix(trimmed, "CATEGORY:")); v != "" {
+				out.Category = strings.ToLower(v)
 			}
-		} else {
+		case strings.HasPrefix(trimmed, "DESCRIPTION:"):
+			out.Description = strings.TrimSpace(strings.TrimPrefix(trimmed, "DESCRIPTION:"))
+		case strings.HasPrefix(trimmed, "WHEN_TO_USE:"):
+			out.WhenToUse = strings.TrimSpace(strings.TrimPrefix(trimmed, "WHEN_TO_USE:"))
+		default:
 			contentLines = append(contentLines, line)
 		}
 	}
 
-	return &CompileOutput{
-		Markdown: strings.TrimSpace(strings.Join(contentLines, "\n")),
-		Category: category,
-	}
+	out.Markdown = strings.TrimSpace(strings.Join(contentLines, "\n"))
+	return out
 }
 
 // parseJSONStringArray extracts a JSON string array from an LLM response,

@@ -11,7 +11,7 @@ import (
 
 // Version is set at build time via -ldflags "-X 'github.com/Nithin-Valiyaveedu/markdocs/cmd.Version=v1.2.3'"
 // Falls back to "dev" for local builds.
-var Version = "dev"
+var Version = "0.2.1"
 
 // appConfig holds the loaded configuration, available to all subcommands.
 var appConfig *config.Config

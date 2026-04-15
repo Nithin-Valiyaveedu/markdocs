@@ -74,6 +74,8 @@ func runAddPipeline(ctx context.Context, library, url string, provider llm.LLMPr
 		provider.Model(),
 		compiled.Category,
 		framework,
+		compiled.Description,
+		compiled.WhenToUse,
 		[]string{url},
 		scraped,
 	)

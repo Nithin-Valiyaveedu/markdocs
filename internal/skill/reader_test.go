@@ -19,7 +19,7 @@ checksum: sha256:abc123
 model: llama3.2
 provider: ollama
 project_framework: next.js
-markdocs_version: 0.2.0
+markdocs_version: 0.2.1
 ---
 
 # react — markdocs skill
@@ -79,7 +79,7 @@ compiled: "2026-04-12T10:00:00Z"
 checksum: sha256:def456
 model: gpt-4o-mini
 provider: openai
-markdocs_version: 0.2.0
+markdocs_version: 0.2.1
 ---
 
 # stripe — markdocs skill
