@@ -99,7 +99,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		_, err = runAddPipeline(ctx, lib.name, urls[0], compiler, providerName, modelName, cwd)
+		_, err = runAddPipeline(ctx, lib.name, urls[0], compiler, providerName, modelName, cwd, true)
 		if err != nil {
 			ui.Error(fmt.Sprintf("failed: %s", err))
 			continue

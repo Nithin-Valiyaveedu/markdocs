@@ -106,7 +106,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		}
 
 		ui.Recompiling("content changed — recompiling...")
-		_, err = runAddPipeline(ctx, name, primaryURL, compiler, providerName, modelName, cwd)
+		_, err = runAddPipeline(ctx, name, primaryURL, compiler, providerName, modelName, cwd, true)
 		if err != nil {
 			ui.Error(fmt.Sprintf("recompile failed: %s", err))
 			skipped++

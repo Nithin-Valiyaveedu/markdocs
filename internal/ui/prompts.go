@@ -2,9 +2,115 @@ package ui
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"strings"
 
 	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/lipgloss"
 )
+
+// ReviewAction represents what the user chose during draft review.
+type ReviewAction int
+
+const (
+	ReviewAccept  ReviewAction = iota
+	ReviewEdit
+	ReviewDiscard
+)
+
+// ReviewDraft shows a preview of the compiled skill draft and prompts the user
+// to Accept, Edit in $EDITOR, or Discard before the file is written to disk.
+func ReviewDraft(draftMarkdown string) (ReviewAction, string, error) {
+	Section("Draft Preview")
+	fmt.Println(renderDraftPreview(draftMarkdown))
+
+	const (
+		optAccept  = "Accept as-is"
+		optEdit    = "Edit in $EDITOR"
+		optDiscard = "Discard"
+	)
+
+	var chosen string
+	err := huh.NewSelect[string]().
+		Title("What would you like to do with this draft?").
+		Options(
+			huh.NewOption(optAccept, optAccept),
+			huh.NewOption(optEdit, optEdit),
+			huh.NewOption(optDiscard, optDiscard),
+		).
+		Value(&chosen).
+		Run()
+	if err != nil {
+		return ReviewDiscard, "", fmt.Errorf("review prompt: %w", err)
+	}
+
+	switch chosen {
+	case optEdit:
+		edited, err := openInEditor(draftMarkdown)
+		if err != nil {
+			return ReviewDiscard, "", fmt.Errorf("editor: %w", err)
+		}
+		return ReviewEdit, edited, nil
+	case optDiscard:
+		return ReviewDiscard, "", nil
+	default:
+		return ReviewAccept, draftMarkdown, nil
+	}
+}
+
+// renderDraftPreview returns a lipgloss-bordered preview of the first 50 lines.
+func renderDraftPreview(markdown string) string {
+	lines := strings.Split(markdown, "\n")
+	const maxLines = 50
+	var body string
+	if len(lines) > maxLines {
+		body = strings.Join(lines[:maxLines], "\n") +
+			"\n" + StyleMuted.Render(fmt.Sprintf("  … %d more lines", len(lines)-maxLines))
+	} else {
+		body = markdown
+	}
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(ColorBorder)).
+		Padding(0, 1).
+		MaxWidth(100).
+		Render(body)
+}
+
+// openInEditor writes content to a temp file, opens it in $EDITOR (fallback: nano),
+// waits for the editor to exit, then returns the (possibly modified) content.
+func openInEditor(content string) (string, error) {
+	tmp, err := os.CreateTemp("", "markdocs-draft-*.md")
+	if err != nil {
+		return "", fmt.Errorf("creating temp file: %w", err)
+	}
+	defer os.Remove(tmp.Name())
+
+	if _, err := tmp.WriteString(content); err != nil {
+		return "", fmt.Errorf("writing temp file: %w", err)
+	}
+	tmp.Close()
+
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		editor = "nano"
+	}
+
+	editorCmd := exec.Command(editor, tmp.Name())
+	editorCmd.Stdin = os.Stdin
+	editorCmd.Stdout = os.Stdout
+	editorCmd.Stderr = os.Stderr
+	if err := editorCmd.Run(); err != nil {
+		return "", fmt.Errorf("editor exited with error: %w", err)
+	}
+
+	result, err := os.ReadFile(tmp.Name())
+	if err != nil {
+		return "", fmt.Errorf("reading edited file: %w", err)
+	}
+	return string(result), nil
+}
 
 // Select shows an interactive single-select prompt and returns the chosen value.
 func Select(title string, options []string) (string, error) {

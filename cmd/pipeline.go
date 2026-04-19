@@ -45,10 +45,12 @@ type PipelineResult struct {
 	Category  string
 }
 
-// runAddPipeline executes the full add pipeline: scrape → compile → write.
-// It is called by both `add` and `scan --add-all`.
+// runAddPipeline executes the full add pipeline: scrape → compile → [review] → write.
+// It is called by `add`, `scan --add-all`, and `update`.
 // providerName and modelName are stored in the skill file frontmatter for traceability.
-func runAddPipeline(ctx context.Context, library, url string, compiler skill.Compiler, providerName, modelName string, cwd string) (*PipelineResult, error) {
+// When noInteractive is false, a draft review prompt is shown before writing.
+// Returns nil, nil if the user discards the draft.
+func runAddPipeline(ctx context.Context, library, url string, compiler skill.Compiler, providerName, modelName string, cwd string, noInteractive bool) (*PipelineResult, error) {
 	// Step 1: Scrape
 	var scraped string
 	err := ui.Spin(fmt.Sprintf("Scraping %s...", url), func() error {
@@ -81,7 +83,22 @@ func runAddPipeline(ctx context.Context, library, url string, compiler skill.Com
 	}
 	ui.StepDone(2, fmt.Sprintf("Compiled skill (category: %s)", compiled.Category))
 
-	// Step 3: Write — metadata lives entirely in the skill file's frontmatter
+	// Step 3: Review draft (skipped in non-interactive mode)
+	if !noInteractive {
+		action, editedMarkdown, err := ui.ReviewDraft(compiled.Markdown)
+		if err != nil {
+			return nil, fmt.Errorf("draft review: %w", err)
+		}
+		if action == ui.ReviewDiscard {
+			ui.Warning("Discarded — no skill written.")
+			return nil, nil
+		}
+		if action == ui.ReviewEdit {
+			compiled.Markdown = editedMarkdown
+		}
+	}
+
+	// Step 4: Write — metadata lives entirely in the skill file's frontmatter
 	framework := skill.DetectFramework(cwd)
 	meta := skill.NewSkillMeta(
 		library,

@@ -25,7 +25,7 @@ Pass --llm to use an LLM provider for richer content (requires 'markdocs init').
 }
 
 func init() {
-	addCmd.Flags().BoolVar(&addNoInteractive, "no-interactive", false, "Skip URL selection prompt, use first suggested URL")
+	addCmd.Flags().BoolVar(&addNoInteractive, "no-interactive", false, "Skip URL selection and draft review prompts")
 }
 
 func runAdd(cmd *cobra.Command, args []string) error {
@@ -66,10 +66,13 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
 
-	result, err := runAddPipeline(ctx, library, selectedURL, compiler, providerName, modelName, cwd)
+	result, err := runAddPipeline(ctx, library, selectedURL, compiler, providerName, modelName, cwd, addNoInteractive)
 	if err != nil {
 		ui.Error(fmt.Sprintf("Pipeline failed: %s", err))
 		os.Exit(2)
+	}
+	if result == nil {
+		return nil // user discarded the draft
 	}
 
 	ui.Blank()
