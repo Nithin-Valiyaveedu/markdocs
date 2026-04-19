@@ -2,17 +2,25 @@
 
 <img src="assets/markdocs-logo.png" alt="markdocs" width="420" />
 
-CLI to compile library documentation into Claude Code skill files
+[![Build](https://github.com/Nithin-Valiyaveedu/markdocs/actions/workflows/build.yml/badge.svg)](https://github.com/Nithin-Valiyaveedu/markdocs/actions/workflows/build.yml)
+[![Test](https://github.com/Nithin-Valiyaveedu/markdocs/actions/workflows/test.yml/badge.svg)](https://github.com/Nithin-Valiyaveedu/markdocs/actions/workflows/test.yml)
+[![npm](https://img.shields.io/npm/v/@val-nithin/markdocs)](https://www.npmjs.com/package/@val-nithin/markdocs)
+[![Downloads](https://img.shields.io/npm/dm/@val-nithin/markdocs)](https://www.npmjs.com/package/@val-nithin/markdocs)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Nithin-Valiyaveedu/markdocs)](https://goreportcard.com/report/github.com/Nithin-Valiyaveedu/markdocs)
+
+Draft and create custom Claude Code skill files from existing documentation — with LLM assistance and a review step before anything is written to disk.
 
 ## How It Works
 
-`markdocs add react` does five things:
+`markdocs add react` does six things:
 
 1. Asks the configured LLM for official documentation URLs
 2. Lets you pick which URL(s) to scrape (interactive)
 3. Scrapes the page with a built-in Go scraper (no external APIs)
-4. Compiles the content into a structured skill file using the LLM
-5. Writes `.claude/skills/frontend/react.md` — Claude Code picks it up next session
+4. Compiles the content into a structured skill draft using the LLM
+5. Shows you the draft in the terminal — edit it in `$EDITOR` if you want
+6. Writes `.claude/skills/frontend/react.md` — Claude Code picks it up next session
 
 ## Installation
 
@@ -41,15 +49,18 @@ brew install markdocs
 # 1. Configure your LLM provider (runs once)
 markdocs init
 
-# 2. Add a skill for any library
+# 2. Add a skill for any library (shows draft review before writing)
 markdocs add shadcn
 markdocs add stripe
 markdocs add drizzle-orm
 
-# 3. Scan your project for missing skills
+# 3. Create a skill from your own notes or docs
+markdocs draft internal-api
+
+# 4. Scan your project for missing skills
 markdocs scan
 
-# 4. Keep skills up to date
+# 5. Keep skills up to date
 markdocs update --all
 ```
 
@@ -71,7 +82,7 @@ Config is saved to `~/.markdocs/config.json`.
 
 ### `markdocs add <library>`
 
-Find, scrape, compile, and write a skill file for the given library.
+Find, scrape, compile, and write a skill file for the given library. After compilation, a draft review prompt lets you inspect and optionally edit the skill before it's written to disk.
 
 ```bash
 markdocs add react
@@ -83,9 +94,25 @@ markdocs add stripe --no-interactive
 
 | Flag | Description |
 |------|-------------|
-| `--no-interactive` | Skip URL selection prompt, use first suggested URL |
+| `--no-interactive` | Skip URL selection and draft review prompts; write immediately |
 
 The skill is written to `.claude/skills/<category>/<library>.md` in the current directory.
+
+---
+
+### `markdocs draft <name>`
+
+Compile your own notes, internal docs, or any text content into a skill file. Useful for private APIs, internal tools, or any library not well-covered by public documentation.
+
+```bash
+# Interactive — paste content in the terminal
+markdocs draft internal-api
+
+# Pipe content from a file or command
+cat docs/api.md | markdocs draft internal-api
+```
+
+After compilation, the same draft review prompt is shown — accept as-is, edit in `$EDITOR`, or discard.
 
 ---
 

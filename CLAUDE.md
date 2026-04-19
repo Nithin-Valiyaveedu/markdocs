@@ -1,6 +1,6 @@
 # markdocs
 
-Go CLI that compiles library documentation into Claude Code skill files (`.claude/skills/<category>/<library>.md`).
+Go CLI that helps you draft and create custom Claude Code skill files from existing documentation (`.claude/skills/<category>/<library>.md`).
 
 ## Commands
 
@@ -17,11 +17,12 @@ go run main.go <command>    # run locally
 - **No SQLite / no CGO** — metadata lives entirely in each skill file's YAML frontmatter (`SkillMeta`), not a database
 - **Single binary** — no runtime requirements for end users; distributed via npm and goreleaser
 - **Skills are plain markdown** — written to `.claude/skills/<category>/<library>.md`; Claude Code picks them up automatically next session
+- **Draft-review before write** — after LLM compilation, users review and optionally edit the skill in `$EDITOR` before it's written to disk; `--no-interactive` skips this
 
 ## Directory Structure
 
 ```
-cmd/            → cobra commands (root, add, scan, update, list, init, pipeline)
+cmd/            → cobra commands (root, add, draft, scan, update, list, init, pipeline)
 internal/
   config/       → read/write ~/.markdocs/config.json
   llm/          → LLMProvider interface + Anthropic / OpenAI / Ollama backends
@@ -75,9 +76,26 @@ Followed by LLM-compiled markdown with sections: What This Is, Installation, Key
 1. Create `cmd/<name>.go` with a `cobra.Command`
 2. Register it in `cmd/root.go` `init()`
 
+See `cmd/draft.go` as a recent example.
+
 ## Shared Pipeline
 
-`cmd/pipeline.go:runAddPipeline` contains the reusable scrape → compile → write flow used by both `add` and `scan --add-all`. Keep command-specific logic in the command files; pipeline logic here.
+`cmd/pipeline.go:runAddPipeline` contains the reusable scrape → compile → [review] → write flow used by `add`, `scan --add-all`, and `update`.
+
+Signature: `runAddPipeline(ctx, library, url, provider, cwd, noInteractive bool) (*PipelineResult, error)`
+
+- `noInteractive = false` (default for `add`): shows the draft review prompt (`ui.ReviewDraft`) after compile, before write. Returns `nil, nil` if the user discards.
+- `noInteractive = true` (used by `scan --add-all` and `update`): skips review, writes immediately.
+
+### Draft Review (`ui.ReviewDraft`)
+
+Defined in `internal/ui/prompts.go`. Shows a bordered preview of the first 50 lines of the compiled skill, then prompts: Accept / Edit in $EDITOR / Discard.
+
+- **Edit**: writes content to a temp `.md` file, opens `$EDITOR` (fallback `nano`), re-reads on exit
+- **Accept**: passes markdown through unchanged
+- **Discard**: returns `ReviewDiscard`; caller returns `nil, nil` to signal cancellation
+
+`ReviewAction` constants: `ReviewAccept`, `ReviewEdit`, `ReviewDiscard` (in `internal/ui/prompts.go`).
 
 ## Code Style
 
