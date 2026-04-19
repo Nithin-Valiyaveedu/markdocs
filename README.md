@@ -2,6 +2,13 @@
 
 <img src="assets/markdocs-logo.png" alt="markdocs" width="420" />
 
+[![Build](https://github.com/Nithin-Valiyaveedu/markdocs/actions/workflows/build.yml/badge.svg)](https://github.com/Nithin-Valiyaveedu/markdocs/actions/workflows/build.yml)
+[![Test](https://github.com/Nithin-Valiyaveedu/markdocs/actions/workflows/test.yml/badge.svg)](https://github.com/Nithin-Valiyaveedu/markdocs/actions/workflows/test.yml)
+[![npm](https://img.shields.io/npm/v/@val-nithin/markdocs)](https://www.npmjs.com/package/@val-nithin/markdocs)
+[![Downloads](https://img.shields.io/npm/dm/@val-nithin/markdocs)](https://www.npmjs.com/package/@val-nithin/markdocs)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Nithin-Valiyaveedu/markdocs)](https://goreportcard.com/report/github.com/Nithin-Valiyaveedu/markdocs)
+
 CLI to compile library documentation into Claude Code skill files
 
 ## How It Works
