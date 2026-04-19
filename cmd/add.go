@@ -5,8 +5,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Nithin-Valiyaveedu/markdocs/internal/llm"
-	"github.com/Nithin-Valiyaveedu/markdocs/internal/skill"
 	"github.com/Nithin-Valiyaveedu/markdocs/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -16,9 +14,12 @@ var addNoInteractive bool
 var addCmd = &cobra.Command{
 	Use:   "add <library>",
 	Short: "Find, scrape, compile, and write a skill for a library.",
-	Long: `Discovers documentation URLs for the given library using the configured LLM,
-presents them for interactive selection, scrapes the pages, compiles the content
-into a structured skill file, and writes it to .claude/skills/<category>/<library>.md.`,
+	Long: `Discovers documentation URLs for the given library, scrapes the pages,
+compiles the content into a structured skill file, and writes it to
+.claude/skills/<category>/<library>.md.
+
+By default, structured extraction is used (no API key required).
+Pass --llm to use an LLM provider for richer content (requires 'markdocs init').`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: runAdd,
 }
@@ -31,17 +32,12 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	library := strings.Join(args, " ")
 	ctx := cmd.Context()
 
-	provider, err := llm.NewProvider(appConfig)
-	if err != nil {
-		ui.Error(fmt.Sprintf("Failed to create provider: %s", err))
-		os.Exit(2)
-	}
+	compiler, providerName, modelName := newCompiler()
 
 	// Step 1: Discover URLs
 	var urls []string
-	ui.Step(1, fmt.Sprintf("Asking LLM for %s documentation URLs...", library))
-	err = ui.Spin("", func() error {
-		compiler := skill.NewLLMCompiler(provider)
+	ui.Step(1, fmt.Sprintf("Discovering %s documentation URLs...", library))
+	err := ui.Spin("", func() error {
 		var err error
 		urls, err = compiler.SuggestURLs(ctx, library)
 		return err
@@ -70,7 +66,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
 
-	result, err := runAddPipeline(ctx, library, selectedURL, provider, cwd)
+	result, err := runAddPipeline(ctx, library, selectedURL, compiler, providerName, modelName, cwd)
 	if err != nil {
 		ui.Error(fmt.Sprintf("Pipeline failed: %s", err))
 		os.Exit(2)

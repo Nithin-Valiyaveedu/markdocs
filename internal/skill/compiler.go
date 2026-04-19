@@ -9,6 +9,7 @@ import (
 	"text/template"
 
 	"github.com/Nithin-Valiyaveedu/markdocs/internal/llm"
+	"github.com/Nithin-Valiyaveedu/markdocs/internal/resolver"
 	"github.com/Nithin-Valiyaveedu/markdocs/internal/search"
 )
 
@@ -81,25 +82,30 @@ type LLMCompiler struct {
 	// searchFn is the web search backend. Defaults to search.DocURLs.
 	// Override in tests to avoid real network calls.
 	searchFn func(library string, max int) ([]string, error)
+	// resolveFn is the registry resolver backend. Defaults to resolver.New().Resolve.
+	// Override in tests to avoid real network calls.
+	resolveFn func(ctx context.Context, library string) ([]string, error)
 }
 
 var _ Compiler = (*LLMCompiler)(nil)
 
 // NewLLMCompiler creates a new LLMCompiler using the given provider.
 func NewLLMCompiler(provider llm.LLMProvider) *LLMCompiler {
-	return &LLMCompiler{provider: provider, searchFn: search.DocURLs}
+	r := resolver.New()
+	return &LLMCompiler{
+		provider:  provider,
+		searchFn:  search.DocURLs,
+		resolveFn: r.Resolve,
+	}
 }
 
 // SuggestURLs discovers documentation URLs for the given library.
-// It searches the web first (DuckDuckGo) and validates reachability, falling
-// back to asking the LLM if web search yields nothing usable.
+// Resolution order: package registry APIs → DuckDuckGo → LLM.
 func (c *LLMCompiler) SuggestURLs(ctx context.Context, library string) ([]string, error) {
-	// Step 1: web search
-	webURLs, err := c.searchFn(library, 8)
-	if err == nil && len(webURLs) > 0 {
-		validated := search.ValidateURLs(webURLs)
+	// Step 1: Package registry — authoritative, maintainer-declared
+	if regURLs, err := c.resolveFn(ctx, library); err == nil && len(regURLs) > 0 {
+		validated := search.ValidateURLs(regURLs)
 		if len(validated) > 0 {
-			// Return top 5 validated results
 			if len(validated) > 5 {
 				validated = validated[:5]
 			}
@@ -107,7 +113,19 @@ func (c *LLMCompiler) SuggestURLs(ctx context.Context, library string) ([]string
 		}
 	}
 
-	// Step 2: fall back to LLM
+	// Step 2: Web search
+	webURLs, err := c.searchFn(library, 8)
+	if err == nil && len(webURLs) > 0 {
+		validated := search.ValidateURLs(webURLs)
+		if len(validated) > 0 {
+			if len(validated) > 5 {
+				validated = validated[:5]
+			}
+			return validated, nil
+		}
+	}
+
+	// Step 3: LLM fallback
 	prompt, err := renderTemplate(urlDiscoveryPrompt, map[string]string{"Library": library})
 	if err != nil {
 		return nil, fmt.Errorf("rendering url discovery prompt: %w", err)
@@ -126,7 +144,6 @@ func (c *LLMCompiler) SuggestURLs(ctx context.Context, library string) ([]string
 		return nil, fmt.Errorf("no URLs returned for library %q", library)
 	}
 
-	// Validate LLM-suggested URLs too
 	validated := search.ValidateURLs(urls)
 	if len(validated) > 0 {
 		return validated, nil

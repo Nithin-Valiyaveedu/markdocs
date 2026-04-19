@@ -64,10 +64,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	provider, err := providerFromConfig()
-	if err != nil {
-		return err
-	}
+	compiler, providerName, modelName := newCompiler()
 
 	sc := scraper.NewWaterfall()
 	updated := 0
@@ -109,7 +106,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		}
 
 		ui.Recompiling("content changed — recompiling...")
-		_, err = runAddPipeline(ctx, name, primaryURL, provider, cwd)
+		_, err = runAddPipeline(ctx, name, primaryURL, compiler, providerName, modelName, cwd)
 		if err != nil {
 			ui.Error(fmt.Sprintf("recompile failed: %s", err))
 			skipped++

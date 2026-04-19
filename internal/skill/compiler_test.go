@@ -24,13 +24,18 @@ func (m *mockProvider) Complete(ctx context.Context, prompt string) (string, err
 
 func (m *mockProvider) Model() string { return m.model }
 
-// noopSearch is a search function that always returns nothing, forcing the LLM fallback.
+// noopSearch is a search function that always returns nothing.
 func noopSearch(_ string, _ int) ([]string, error) { return nil, nil }
 
-// newTestCompiler returns an LLMCompiler with web search disabled.
+// noopResolve is a resolver function that always returns nothing.
+func noopResolve(_ context.Context, _ string) ([]string, error) { return nil, nil }
+
+// newTestCompiler returns an LLMCompiler with web search and registry resolution disabled,
+// so tests exercise only the LLM fallback path.
 func newTestCompiler(provider *mockProvider) *LLMCompiler {
 	c := NewLLMCompiler(provider)
 	c.searchFn = noopSearch
+	c.resolveFn = noopResolve
 	return c
 }
 
