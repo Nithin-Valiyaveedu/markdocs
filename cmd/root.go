@@ -72,6 +72,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&useLLM, "llm", false, "Use LLM compilation instead of structured extraction (requires 'markdocs init')")
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(addCmd)
+	rootCmd.AddCommand(draftCmd)
 	rootCmd.AddCommand(scanCmd)
 	rootCmd.AddCommand(updateCmd)
 	rootCmd.AddCommand(listCmd)
