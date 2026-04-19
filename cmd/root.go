@@ -22,7 +22,12 @@ func resolveVersion() string {
 }
 
 // appConfig holds the loaded configuration, available to all subcommands.
+// It is nil when running without --llm (structured extraction mode).
 var appConfig *config.Config
+
+// useLLM controls whether commands use LLM compilation (requires a configured provider).
+// When false (default), structured heading-based extraction is used and no API key is needed.
+var useLLM bool
 
 var rootCmd = &cobra.Command{
 	Use:   "markdocs",
@@ -30,20 +35,25 @@ var rootCmd = &cobra.Command{
 	Long: `markdocs scrapes library documentation and compiles it into structured
 Claude Code skill files (.claude/skills/<category>/<library>.md).
 
-Configure a provider with 'markdocs init', then add skills with 'markdocs add <library>'.`,
+By default, markdocs uses structured extraction — no API key required.
+Pass --llm to use an LLM provider instead (configure with 'markdocs init').`,
 	Run: func(cmd *cobra.Command, args []string) {
 		_ = cmd.Help()
 	},
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		ui.PrintBanner(Version)
 		ui.Blank()
-		// init command creates the config, so skip loading it
+		// init creates the config, so skip loading it
 		if cmd.Name() == "init" {
+			return nil
+		}
+		// Config is only required when --llm is explicitly set
+		if !useLLM {
 			return nil
 		}
 		cfg, err := config.Load()
 		if err != nil {
-			return fmt.Errorf("run 'markdocs init' first to configure a provider: %w", err)
+			return fmt.Errorf("--llm requires a configured provider — run 'markdocs init' first: %w", err)
 		}
 		appConfig = cfg
 		return nil
@@ -59,6 +69,7 @@ func Execute() {
 }
 
 func init() {
+	rootCmd.PersistentFlags().BoolVar(&useLLM, "llm", false, "Use LLM compilation instead of structured extraction (requires 'markdocs init')")
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(addCmd)
 	rootCmd.AddCommand(scanCmd)

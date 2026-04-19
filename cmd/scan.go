@@ -79,13 +79,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 	}
 
 	// --add-all: run pipeline for each missing library
-	if appConfig == nil {
-		return fmt.Errorf("no provider configured — run 'markdocs init' first")
-	}
-	provider, err := providerFromConfig()
-	if err != nil {
-		return err
-	}
+	compiler, providerName, modelName := newCompiler()
 
 	ui.Blank()
 	ui.Section(fmt.Sprintf("Adding %d missing skills", len(missing)))
@@ -95,8 +89,6 @@ func runScan(cmd *cobra.Command, args []string) error {
 		ui.Blank()
 		ui.Section(lib.name)
 
-		// Use LLM to discover URL, pick first one automatically
-		compiler := skill.NewLLMCompiler(provider)
 		urls, err := compiler.SuggestURLs(ctx, lib.name)
 		if err != nil {
 			ui.Error(fmt.Sprintf("skipping %s: %s", lib.name, err))
@@ -107,7 +99,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		_, err = runAddPipeline(ctx, lib.name, urls[0], provider, cwd)
+		_, err = runAddPipeline(ctx, lib.name, urls[0], compiler, providerName, modelName, cwd)
 		if err != nil {
 			ui.Error(fmt.Sprintf("failed: %s", err))
 			continue

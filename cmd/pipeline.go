@@ -24,6 +24,21 @@ func providerFromConfig() (llm.LLMProvider, error) {
 	return provider, nil
 }
 
+// newCompiler returns the appropriate Compiler based on the --llm flag.
+// In LLM mode, it requires appConfig to be loaded.
+// providerName and modelName are set to identify the backend in skill frontmatter.
+func newCompiler() (compiler skill.Compiler, providerName, modelName string) {
+	if useLLM {
+		provider, err := providerFromConfig()
+		if err != nil {
+			ui.Error(err.Error())
+			os.Exit(2)
+		}
+		return skill.NewLLMCompiler(provider), string(appConfig.Provider), provider.Model()
+	}
+	return skill.NewStructuredExtractor(), "structured", ""
+}
+
 // PipelineResult holds the output of a successful runAddPipeline call.
 type PipelineResult struct {
 	SkillPath string
@@ -32,7 +47,8 @@ type PipelineResult struct {
 
 // runAddPipeline executes the full add pipeline: scrape → compile → write.
 // It is called by both `add` and `scan --add-all`.
-func runAddPipeline(ctx context.Context, library, url string, provider llm.LLMProvider, cwd string) (*PipelineResult, error) {
+// providerName and modelName are stored in the skill file frontmatter for traceability.
+func runAddPipeline(ctx context.Context, library, url string, compiler skill.Compiler, providerName, modelName string, cwd string) (*PipelineResult, error) {
 	// Step 1: Scrape
 	var scraped string
 	err := ui.Spin(fmt.Sprintf("Scraping %s...", url), func() error {
@@ -50,14 +66,13 @@ func runAddPipeline(ctx context.Context, library, url string, provider llm.LLMPr
 	var compiled *skill.CompileOutput
 	err = ui.Spin("Compiling skill...", func() error {
 		framework := skill.DetectFramework(cwd)
-		compiler := skill.NewLLMCompiler(provider)
 		var err error
 		compiled, err = compiler.Compile(ctx, skill.CompileInput{
 			Library:          library,
 			URL:              url,
 			ScrapedMarkdown:  scraped,
 			ProjectFramework: framework,
-			Model:            provider.Model(),
+			Model:            modelName,
 		})
 		return err
 	})
@@ -70,8 +85,8 @@ func runAddPipeline(ctx context.Context, library, url string, provider llm.LLMPr
 	framework := skill.DetectFramework(cwd)
 	meta := skill.NewSkillMeta(
 		library,
-		string(appConfig.Provider),
-		provider.Model(),
+		providerName,
+		modelName,
 		compiled.Category,
 		framework,
 		compiled.Description,
